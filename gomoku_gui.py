@@ -10,8 +10,6 @@ screen_w, screen_h = info.current_w, info.current_h
 
 # --- Parameter utama ---
 BOARD_SIZE = 15
-
-# Batasi tinggi maksimum biar muat di layar (misal 90% tinggi layar)
 max_height = int(screen_h * 0.85)
 MARGIN = int(max_height * 0.05)
 CELL_SIZE = int((max_height * 0.9 - MARGIN * 2) / BOARD_SIZE)
@@ -34,12 +32,14 @@ pygame.display.set_caption("Gomoku 15x15")
 
 BOARD_WIDTH = (BOARD_SIZE - 1) * CELL_SIZE
 BOARD_HEIGHT = (BOARD_SIZE - 1) * CELL_SIZE
-BOARD_X = (SCREEN_SIZE - BOARD_WIDTH) // 2   # posisi X agar tengah horizontal
-BOARD_Y = ((SCREEN_SIZE + 100) - BOARD_HEIGHT) // 2   # posisi Y agar tengah vertikal
+BOARD_X = (SCREEN_SIZE - BOARD_WIDTH) // 2
+BOARD_Y = ((SCREEN_SIZE + 100) - BOARD_HEIGHT) // 2
 
-# --- Font (ukuran menyesuaikan sel) ---
+# --- Font ---
 font = pygame.font.Font(None, int(CELL_SIZE * 1))
 title_font = pygame.font.Font(None, int(CELL_SIZE * 1.5))
+winner_font = pygame.font.Font(None, int(CELL_SIZE * 1.8))
+button_font = pygame.font.Font(None, int(CELL_SIZE * 0.9))
 
 # --- Fungsi dasar ---
 def create_board():
@@ -58,10 +58,17 @@ def draw_board(board):
     screen.blit(player1_text, (MARGIN, int(MARGIN * 1.5)))
     screen.blit(player2_text, (SCREEN_SIZE - MARGIN - player2_text.get_width(), int(MARGIN * 1.5)))
 
-    # Bidak player label
-    pygame.draw.circle(screen, X_COLOR, (MARGIN + player1_text.get_width() + 40, int(MARGIN * 1.7)), int(CELL_SIZE / 3))
-    pygame.draw.circle(screen, O_COLOR, (SCREEN_SIZE - MARGIN - player2_text.get_width() - 40, int(MARGIN * 1.7)), int(CELL_SIZE / 3))
-    pygame.draw.circle(screen, (0, 0, 0), (SCREEN_SIZE - MARGIN - player2_text.get_width() - 40, int(MARGIN * 1.7)), int(CELL_SIZE / 3), 2)
+    # Lingkaran player sejajar teks
+    circle_y = int(MARGIN * 1.5) + player1_text.get_height() // 2
+    pygame.draw.circle(screen, X_COLOR,
+                       (MARGIN + player1_text.get_width() + 35, circle_y),
+                       int(CELL_SIZE / 3))
+    pygame.draw.circle(screen, O_COLOR,
+                       (SCREEN_SIZE - MARGIN - player2_text.get_width() - 35, circle_y),
+                       int(CELL_SIZE / 3))
+    pygame.draw.circle(screen, (0, 0, 0),
+                       (SCREEN_SIZE - MARGIN - player2_text.get_width() - 35, circle_y),
+                       int(CELL_SIZE / 3), 2)
 
     # === Garis papan ===
     for i in range(BOARD_SIZE):
@@ -113,6 +120,70 @@ def check_winner(board, player):
 def is_full(board):
     return all(cell != EMPTY for row in board for cell in row)
 
+# --- Pesan Menang ---
+def show_end_message(winner):
+    overlay = pygame.Surface((SCREEN_SIZE, SCREEN_SIZE + 100))
+    overlay.set_alpha(200)
+    overlay.fill((0, 0, 0))
+    screen.blit(overlay, (0, 0))
+
+    # --- Pesan Menang ---
+    if winner == PLAYER_X:
+        msg = "Pemain Hitam Menang!"
+        color = (255, 215, 0)
+    elif winner == PLAYER_O:
+        msg = "Pemain Putih Menang!"
+        color = (255, 215, 0)
+    else:
+        msg = "Seri!"
+        color = (255, 215, 0)
+
+    text = winner_font.render(msg, True, color)
+    text_rect = text.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2 - 60))
+    screen.blit(text, text_rect)
+
+    # --- Tombol Main Lagi & Keluar ---
+    button_w, button_h = 180, 60
+    spacing = 40
+    total_width = button_w * 2 + spacing
+    start_x = (SCREEN_SIZE - total_width) // 2
+    y_pos = SCREEN_SIZE // 2 + 20
+
+    play_again_rect = pygame.Rect(start_x, y_pos, button_w, button_h)
+    quit_rect = pygame.Rect(start_x + button_w + spacing, y_pos, button_w, button_h)
+
+    def draw_button(rect, color, text_str):
+        shadow_rect = rect.copy()
+        shadow_rect.move_ip(4, 4)
+        pygame.draw.rect(screen, (40, 40, 40), shadow_rect, border_radius=12)
+        pygame.draw.rect(screen, color, rect, border_radius=12)
+        btn_text = button_font.render(text_str, True, (255, 255, 255))
+        btn_rect = btn_text.get_rect(center=rect.center)
+        screen.blit(btn_text, btn_rect)
+
+    draw_button(play_again_rect, (70, 180, 90), "Main Lagi")
+    draw_button(quit_rect, (200, 70, 70), "Keluar")
+
+    pygame.draw.line(screen, (255, 255, 255),
+                     (SCREEN_SIZE//2 - 120, SCREEN_SIZE//2 - 20),
+                     (SCREEN_SIZE//2 + 120, SCREEN_SIZE//2 - 20), 2)
+
+    pygame.display.flip()
+
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if play_again_rect.collidepoint(event.pos):
+                    waiting = False
+                    main()
+                elif quit_rect.collidepoint(event.pos):
+                    pygame.quit()
+                    sys.exit()
+
 # --- Main loop ---
 def main():
     board = create_board()
@@ -142,17 +213,8 @@ def main():
                         else:
                             current_player = PLAYER_O if current_player == PLAYER_X else PLAYER_X
 
-        # Pesan akhir
         if game_over:
-            draw_board(board)
-            if winner == PLAYER_X:
-                text = font.render("Pemain Hitam Menang!", True, (255, 0, 0))
-            elif winner == PLAYER_O:
-                text = font.render("Pemain Putih Menang!", True, (255, 0, 0))
-            else:
-                text = font.render("Seri!", True, (255, 0, 0))
-            screen.blit(text, (SCREEN_SIZE // 2 - 150, SCREEN_SIZE - 50))
-            pygame.display.flip()
+            show_end_message(winner)
 
         pygame.display.update()
 
