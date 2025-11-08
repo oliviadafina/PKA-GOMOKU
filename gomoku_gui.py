@@ -32,6 +32,11 @@ PLAYER_O = 2
 screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE + 100))
 pygame.display.set_caption("Gomoku 15x15")
 
+BOARD_WIDTH = (BOARD_SIZE - 1) * CELL_SIZE
+BOARD_HEIGHT = (BOARD_SIZE - 1) * CELL_SIZE
+BOARD_X = (SCREEN_SIZE - BOARD_WIDTH) // 2   # posisi X agar tengah horizontal
+BOARD_Y = ((SCREEN_SIZE + 100) - BOARD_HEIGHT) // 2   # posisi Y agar tengah vertikal
+
 # --- Font (ukuran menyesuaikan sel) ---
 font = pygame.font.Font(None, int(CELL_SIZE * 1))
 title_font = pygame.font.Font(None, int(CELL_SIZE * 1.5))
@@ -61,17 +66,17 @@ def draw_board(board):
     # === Garis papan ===
     for i in range(BOARD_SIZE):
         pygame.draw.line(screen, LINE_COLOR,
-                         (MARGIN, MARGIN + i * CELL_SIZE + OFFSET_Y),
-                         (MARGIN + (BOARD_SIZE - 1) * CELL_SIZE, MARGIN + i * CELL_SIZE + OFFSET_Y))
+                         (BOARD_X, BOARD_Y + i * CELL_SIZE),
+                         (BOARD_X + BOARD_WIDTH, BOARD_Y + i * CELL_SIZE))
         pygame.draw.line(screen, LINE_COLOR,
-                         (MARGIN + i * CELL_SIZE, MARGIN + OFFSET_Y),
-                         (MARGIN + i * CELL_SIZE, MARGIN + (BOARD_SIZE - 1) * CELL_SIZE + OFFSET_Y))
+                         (BOARD_X + i * CELL_SIZE, BOARD_Y),
+                         (BOARD_X + i * CELL_SIZE, BOARD_Y + BOARD_HEIGHT))
 
     # === Bidak ===
     for x in range(BOARD_SIZE):
         for y in range(BOARD_SIZE):
-            cx = MARGIN + y * CELL_SIZE
-            cy = MARGIN + x * CELL_SIZE + OFFSET_Y
+            cx = BOARD_X + y * CELL_SIZE
+            cy = BOARD_Y + x * CELL_SIZE
             if board[x][y] == PLAYER_X:
                 pygame.draw.circle(screen, X_COLOR, (cx, cy), CELL_SIZE // 2 - 2)
             elif board[x][y] == PLAYER_O:
