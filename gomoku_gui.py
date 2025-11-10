@@ -53,8 +53,8 @@ def draw_board(board):
     screen.blit(title_text, (SCREEN_SIZE // 2 - title_text.get_width() // 2, int(MARGIN * 0.3)))
 
     # === Label Player ===
-    player1_text = font.render("Player 1", True, (0, 0, 0))
-    player2_text = font.render("Player 2", True, (0, 0, 0))
+    player1_text = font.render("Minimax Agent", True, (0, 0, 0))
+    player2_text = font.render("MCTS Agent", True, (0, 0, 0))
     screen.blit(player1_text, (MARGIN, int(MARGIN * 1.5)))
     screen.blit(player2_text, (SCREEN_SIZE - MARGIN - player2_text.get_width(), int(MARGIN * 1.5)))
 
@@ -94,9 +94,8 @@ def draw_board(board):
 
 def get_cell_from_mouse(pos):
     x, y = pos
-    y -= OFFSET_Y
-    col = round((x - MARGIN) / CELL_SIZE)
-    row = round((y - MARGIN) / CELL_SIZE)
+    col = round((x - BOARD_X) / CELL_SIZE)
+    row = round((y - BOARD_Y) / CELL_SIZE)
     if 0 <= row < BOARD_SIZE and 0 <= col < BOARD_SIZE:
         return row, col
     return None
@@ -129,10 +128,10 @@ def show_end_message(winner):
 
     # --- Pesan Menang ---
     if winner == PLAYER_X:
-        msg = "Pemain Hitam Menang!"
+        msg = "Minimax Agent Menang!"
         color = (255, 215, 0)
     elif winner == PLAYER_O:
-        msg = "Pemain Putih Menang!"
+        msg = "MCTS Agent Menang!"
         color = (255, 215, 0)
     else:
         msg = "Seri!"
@@ -204,6 +203,8 @@ def main():
                     x, y = cell
                     if board[x][y] == EMPTY:
                         board[x][y] = current_player
+                        draw_board(board)
+                        pygame.display.update()
                         if check_winner(board, current_player):
                             game_over = True
                             winner = current_player
