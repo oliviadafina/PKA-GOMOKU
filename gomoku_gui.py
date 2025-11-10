@@ -1,5 +1,6 @@
 import pygame
 import sys
+from agents.minimax_agent import get_move_minimax
 
 # --- Inisialisasi ---
 pygame.init()
@@ -196,24 +197,38 @@ def main():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-
-            if not game_over and event.type == pygame.MOUSEBUTTONDOWN:
+            if not game_over and current_player == PLAYER_O and event.type == pygame. MOUSEBUTTONDOWN:
                 cell = get_cell_from_mouse(event.pos)
                 if cell:
                     x, y = cell
                     if board[x][y] == EMPTY:
-                        board[x][y] = current_player
+                        board[x][y] = PLAYER_O
                         draw_board(board)
                         pygame.display.update()
-                        if check_winner(board, current_player):
+
+                        if check_winner(board, PLAYER_O):
                             game_over = True
-                            winner = current_player
+                            winner = PLAYER_O
                         elif is_full(board):
                             game_over = True
                             winner = 0
                         else:
-                            current_player = PLAYER_O if current_player == PLAYER_X else PLAYER_X
+                            current_player = PLAYER_X
+        if not game_over and current_player == PLAYER_X:
+            x, y = get_move_minimax(board)
+            board[x][y] = PLAYER_X
+            draw_board(board)
+            pygame.display.update()
+            pygame.time.wait(500)
 
+            if check_winner(board, PLAYER_X):
+                game_over = True
+                winner = PLAYER_X
+            elif is_full(board):
+                game_over = True
+                winner = 0
+            else:
+                current_player = PLAYER_O
         if game_over:
             show_end_message(winner)
 
