@@ -1,6 +1,9 @@
 import pygame
 import sys
 from agents.minimax_agent import get_move_minimax
+from agents.mcts_agent import get_move_mcts
+from agents.minimax_optimized_agent import get_move_minimax_optimized
+from agents.mcts_optimized_agent import get_move_mcts_optimized
 
 # --- Inisialisasi ---
 pygame.init()
@@ -197,25 +200,27 @@ def main():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if not game_over and current_player == PLAYER_O and event.type == pygame. MOUSEBUTTONDOWN:
-                cell = get_cell_from_mouse(event.pos)
-                if cell:
-                    x, y = cell
-                    if board[x][y] == EMPTY:
-                        board[x][y] = PLAYER_O
-                        draw_board(board)
-                        pygame.display.update()
+        
+        # MCTS Agent (Player O) move
+        if not game_over and current_player == PLAYER_O:
+            x, y = get_move_mcts_optimized(board, iterations=1000)
+            board[x][y] = PLAYER_O
+            draw_board(board)
+            pygame.display.update()
+            pygame.time.wait(500)
 
-                        if check_winner(board, PLAYER_O):
-                            game_over = True
-                            winner = PLAYER_O
-                        elif is_full(board):
-                            game_over = True
-                            winner = 0
-                        else:
-                            current_player = PLAYER_X
-        if not game_over and current_player == PLAYER_X:
-            x, y = get_move_minimax(board)
+            if check_winner(board, PLAYER_O):
+                game_over = True
+                winner = PLAYER_O
+            elif is_full(board):
+                game_over = True
+                winner = 0
+            else:
+                current_player = PLAYER_X
+        
+        # Minimax Agent (Player X) move
+        elif not game_over and current_player == PLAYER_X:
+            x, y = get_move_minimax_optimized(board)
             board[x][y] = PLAYER_X
             draw_board(board)
             pygame.display.update()
