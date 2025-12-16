@@ -17,17 +17,26 @@
     }
   },
   "mcts": {
-    "level_1": {
-      "simulations": 100,
-      "time_limit": 1.0
+    "mcts_easy": {
+      "num_simulations": 300,
+      "uct_c": 1.2,
+      "neighbor_radius": 1,
+      "rollout_radius": 1,
+      "max_rollout_steps": 20
     },
-    "level_2": {
-      "simulations": 500,
-      "time_limit": 2.0
+    "mcts_medium": {
+      "num_simulations": 400,
+      "uct_c": 1.4,
+      "neighbor_radius": 2,
+      "rollout_radius": 1,
+      "max_rollout_steps": 40
     },
-    "level_3": {
-      "simulations": 1000,
-      "time_limit": 3.0
+    "mcts_hard": {
+      "num_simulations": 500,
+      "uct_c": 1.6,
+      "neighbor_radius": 2,
+      "rollout_radius": 2,
+      "max_rollout_steps": 60
     }
   }
 }
