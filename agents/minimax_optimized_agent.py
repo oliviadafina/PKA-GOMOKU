@@ -169,7 +169,7 @@ def get_move_minimax_level(board, level=1):
     score, move = minimax_ab(board, depth, -math.inf, math.inf, True, ai_player, radius, defense_weight)
     end = time.time()
 
-    print(f"[Minimax Lv{level}] Time: {end - start:.3f}s | Depth={depth} | Radius={radius} | Move={move}")
+    # print(f"[Minimax Lv{level}] Time: {end - start:.3f}s | Depth={depth} | Radius={radius} | Move={move}")
     if move is None:
         valid = get_valid_moves_optimized(board)
         return random.choice(valid) if valid else (0, 0)
