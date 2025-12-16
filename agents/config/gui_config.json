@@ -1,0 +1,10 @@
+{
+  "player_x": {
+    "agent": "minimax",
+    "level": 1
+  },
+  "player_o": {
+    "agent": "minimax",
+    "level": 3
+  }
+}

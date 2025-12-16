@@ -1,0 +1,33 @@
+{
+  "minimax": {
+    "level_1": {
+      "depth": 1,
+      "radius": 1,
+      "defense_weight": 1.2
+    },
+    "level_2": {
+      "depth": 2,
+      "radius": 2,
+      "defense_weight": 1.4
+    },
+    "level_3": {
+      "depth": 3,
+      "radius": 2,
+      "defense_weight": 1.5
+    }
+  },
+  "mcts": {
+    "level_1": {
+      "simulations": 100,
+      "time_limit": 1.0
+    },
+    "level_2": {
+      "simulations": 500,
+      "time_limit": 2.0
+    },
+    "level_3": {
+      "simulations": 1000,
+      "time_limit": 3.0
+    }
+  }
+}
