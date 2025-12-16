@@ -1,10 +1,14 @@
 {
   "player_x": {
     "agent": "minimax",
-    "level": 1
+    "level": 3
   },
   "player_o": {
-    "agent": "minimax",
-    "level": 3
+    "agent": "mcts",
+    "level": 1
+  },
+  "simulation": {
+    "num_games": 50,
+    "verbose": true
   }
 }
