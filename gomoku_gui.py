@@ -3,6 +3,7 @@ import sys
 import json
 import os
 from agents.minimax_optimized_agent import get_move_minimax_level
+from agents.mcts_optimized_agent import get_move_mcts
 
 def load_gui_config():
     config_path = os.path.join(
@@ -47,7 +48,7 @@ PLAYER_O = 2   # Minimax B
 # SCREEN
 # ==============================
 screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE + 100))
-pygame.display.set_caption("Gomoku 15x15 - Minimax vs Minimax")
+pygame.display.set_caption("Gomoku 15x15 - AI vs AI")
 
 BOARD_WIDTH = (BOARD_SIZE - 1) * CELL_SIZE
 BOARD_HEIGHT = (BOARD_SIZE - 1) * CELL_SIZE
@@ -67,14 +68,14 @@ winner_font = pygame.font.Font(None, int(CELL_SIZE * 1.8))
 def create_board():
     return [[EMPTY for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
 
-def draw_board(board):
+def draw_board(board, label_x, label_o, title_text):
     screen.fill(BG_COLOR)
 
-    title = title_font.render("MINIMAX vs MINIMAX", True, (100, 0, 0))
+    title = title_font.render(title_text, True, (100, 0, 0))
     screen.blit(title, (SCREEN_SIZE//2 - title.get_width()//2, int(MARGIN*0.3)))
 
-    p1 = font.render("Minimax A (X)", True, (0, 0, 0))
-    p2 = font.render("Minimax B (O)", True, (0, 0, 0))
+    p1 = font.render(label_x, True, (0, 0, 0))
+    p2 = font.render(label_o, True, (0, 0, 0))
     screen.blit(p1, (MARGIN, int(MARGIN * 1.5)))
     screen.blit(p2, (SCREEN_SIZE - MARGIN - p2.get_width(), int(MARGIN * 1.5)))
 
@@ -132,16 +133,16 @@ def apply_move(board, move, player):
 # ==============================
 # END
 # ==============================
-def show_end_message(winner):
+def show_end_message(winner, label_x, label_o):
     overlay = pygame.Surface((SCREEN_SIZE, SCREEN_SIZE + 100))
     overlay.set_alpha(200)
     overlay.fill((0, 0, 0))
     screen.blit(overlay, (0, 0))
 
     if winner == PLAYER_X:
-        msg = "Minimax A (X) Menang"
+        msg = f"{label_x} Menang"
     elif winner == PLAYER_O:
-        msg = "Minimax B (O) Menang"
+        msg = f"{label_o} Menang"
     else:
         msg = "Seri"
 
@@ -154,26 +155,62 @@ def show_end_message(winner):
 # ==============================
 # MAIN
 # ==============================
+def describe_agent(conf):
+    agent = conf.get("agent", "minimax")
+    level = conf.get("level", 1)
+    name = "MCTS" if agent == "mcts" else "Minimax"
+    return f"{name} Lv{level}"
+
+
+def get_move_for_agent(board, conf):
+    agent = conf.get("agent", "minimax")
+    level = conf.get("level", 1)
+
+    # Map numeric level to MCTS config keys
+    mcts_level_map = {1: "mcts_easy", 2: "mcts_medium", 3: "mcts_hard"}
+
+    if agent == "mcts":
+        level_key = mcts_level_map.get(level, "mcts_medium")
+        return get_move_mcts(board, level=level_key)
+
+    return get_move_minimax_level(board, level=level)
+
+
 def main():
+    conf_x = GUI_CONFIG["player_x"]
+    conf_o = GUI_CONFIG["player_o"]
+    verbose = GUI_CONFIG.get("simulation", {}).get("verbose", False)
+
+    label_x = f"{describe_agent(conf_x)} (X)"
+    label_o = f"{describe_agent(conf_o)} (O)"
+    title_text = f"{describe_agent(conf_x)} vs {describe_agent(conf_o)}"
+
     board = create_board()
     current_player = PLAYER_X
     game_over = False
     winner = None
     clock = pygame.time.Clock()
+    move_count = 0
 
     while not game_over:
         clock.tick(60)
-        draw_board(board)
+        draw_board(board, label_x, label_o, title_text)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
 
-        # === MINIMAX A ===
         if current_player == PLAYER_X:
-            conf_x = GUI_CONFIG["player_x"]
-            move = get_move_minimax_level(board, level=conf_x["level"])
+            import time
+            start = time.time()
+            move = get_move_for_agent(board, conf_x)
+            elapsed = time.time() - start
+            
+            if verbose:
+                move_count += 1
+                print(f"Move {move_count}: [{describe_agent(conf_x)}] pilih {move} dalam {elapsed:.2f}s")
+            
             if not apply_move(board, move, PLAYER_X):
                 winner = PLAYER_O
                 break
@@ -187,11 +224,16 @@ def main():
             else:
                 current_player = PLAYER_O
 
-        # === MINIMAX B ===
         else:
-            conf_o = GUI_CONFIG["player_o"]
-            move = get_move_minimax_level(board, level=conf_o["level"])
-
+            import time
+            start = time.time()
+            move = get_move_for_agent(board, conf_o)
+            elapsed = time.time() - start
+            
+            if verbose:
+                move_count += 1
+                print(f"Move {move_count}: [{describe_agent(conf_o)}] pilih {move} dalam {elapsed:.2f}s")
+            
             if not apply_move(board, move, PLAYER_O):
                 winner = PLAYER_X
                 break
@@ -207,7 +249,7 @@ def main():
 
         pygame.time.wait(300)
 
-    show_end_message(winner)
+    show_end_message(winner, label_x, label_o)
 
 if __name__ == "__main__":
     main()
