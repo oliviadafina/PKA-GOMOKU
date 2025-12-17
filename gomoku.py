@@ -216,6 +216,7 @@ def show_end_message(winner, label_x, label_o):
 # ==============================
 # MAIN
 # ==============================
+
 def describe_agent(agent_type, level):
     name = "MCTS" if agent_type == "mcts" else "Minimax"
     return f"{name} Lv{level}"
@@ -343,8 +344,9 @@ def main():
                             b.selected = (b.value == player_x_level)
                 
                 # Confirm and go to select Player O
-                if confirm_button.handle_event(event) and player_x_agent:
+                if confirm_button.handle_event(event) and player_x_agent and player_x_level is not None:
                     game_state = STATE_SELECT_OPPONENT
+
                 
                 if back_button.handle_event(event):
                     game_state = STATE_MENU
@@ -459,11 +461,21 @@ def main():
             back_button.draw(screen)
         
         elif game_state == STATE_GAME:
-            label_x = "Human (X)" if player_x_agent == "human" else f"{describe_agent(player_x_agent, player_x_level)} (X)"
-            label_o = f"{describe_agent(player_o_agent, player_o_level)} (O)"
-            title_text = f"{label_x} vs {label_o}"
-            
-            draw_board(board, label_x, label_o, title_text)
+            label_x = (
+                "Human (X)"
+                if player_x_agent == "human"
+                else f"{describe_agent(player_x_agent, player_x_level)} (X)"
+                if player_x_level is not None
+                else "Agent (X)"
+            )
+            label_o = (
+                f"{describe_agent(player_o_agent, player_o_level)} (O)"
+                if player_o_level is not None
+                else "Agent (O)"
+            )
+
+            draw_board(board, label_x, label_o, "")
+
             back_button.draw(screen)
             
             # AI moves

@@ -8,6 +8,15 @@ EMPTY = 0
 PLAYER_X = 1
 PLAYER_O = 2
 
+
+# Kode ini mengimplementasikan agen kecerdasan buatan untuk permainan Gomoku menggunakan Monte Carlo Tree Search (MCTS).
+
+# 🔹 Game Playing AI
+# Permainan papan seperti Gomoku adalah lingkungan kompetitif dua agen, sehingga termasuk:
+# Adversarial Search
+# Zero-sum game
+
+
 # ==============================
 # LOAD CONFIG
 # ==============================
