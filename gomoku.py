@@ -1,3 +1,4 @@
+from matplotlib.pyplot import title
 import pygame
 import sys
 import json
@@ -18,6 +19,11 @@ max_height = int(screen_h * 0.85)
 MARGIN = int(max_height * 0.05)
 CELL_SIZE = int((max_height * 0.9 - MARGIN * 2) / BOARD_SIZE)
 SCREEN_SIZE = BOARD_SIZE * CELL_SIZE + MARGIN * 2
+
+LABEL_AGENT_Y = SCREEN_SIZE // 2 - 120
+LABEL_LEVEL_Y = SCREEN_SIZE // 2 + 10
+LEVEL_BUTTON_OFFSET_Y = 35
+CONFIRM_BUTTON_Y = LABEL_LEVEL_Y + 35 + 60
 
 # ==============================
 # COLORS
@@ -66,6 +72,22 @@ button_font = pygame.font.Font(None, int(CELL_SIZE * 0.9))
 # ==============================
 # BUTTON CLASS
 # ==============================
+def create_menu_buttons():
+    button_w = 300
+    button_h = 55
+    gap = 20
+
+    total_height = 3 * button_h + 2 * gap
+    start_y = SCREEN_SIZE // 2 - total_height // 2 + 40
+
+    center_x = SCREEN_SIZE // 2 - button_w // 2
+
+    return [
+        Button(center_x, start_y, button_w, button_h, "User vs Agent", "user_vs_agent"),
+        Button(center_x, start_y + (button_h + gap), button_w, button_h, "Agent vs Agent", "agent_vs_agent"),
+        Button(center_x, start_y + 2 * (button_h + gap), button_w, button_h, "Keluar", "exit"),
+    ]
+
 class Button:
     def __init__(self, x, y, width, height, text, value=None):
         self.rect = pygame.Rect(x, y, width, height)
@@ -94,6 +116,7 @@ class Button:
 # ==============================
 # BOARD
 # ==============================
+
 def create_board():
     return [[EMPTY for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
 
@@ -101,12 +124,21 @@ def draw_board(board, label_x, label_o, title_text):
     screen.fill(BG_COLOR)
 
     title = title_font.render(title_text, True, (100, 0, 0))
-    screen.blit(title, (SCREEN_SIZE//2 - title.get_width()//2, int(MARGIN*0.3)))
+    TITLE_Y = int(MARGIN * 0.6)
+    
+    title_rect = title.get_rect(
+        center=(SCREEN_SIZE // 2, TITLE_Y + title.get_height() // 2)
+)
+    screen.blit(title, title_rect)
 
+    # LABEL PLAYER
     p1 = font.render(label_x, True, (0, 0, 0))
     p2 = font.render(label_o, True, (0, 0, 0))
-    screen.blit(p1, (MARGIN, int(MARGIN * 1.5)))
-    screen.blit(p2, (SCREEN_SIZE - MARGIN - p2.get_width(), int(MARGIN * 1.5)))
+
+    LABEL_Y = TITLE_Y + title.get_height() + 15 
+
+    screen.blit(p1, (MARGIN, LABEL_Y))
+    screen.blit(p2, (SCREEN_SIZE - MARGIN - p2.get_width(), LABEL_Y))
 
     for i in range(BOARD_SIZE):
         pygame.draw.line(screen, LINE_COLOR,
@@ -198,11 +230,16 @@ def get_move_for_agent(board, agent_type, level):
 
 def draw_menu():
     screen.fill(BG_COLOR)
-    title = title_font.render("GOMOKU 15x15", True, (100, 0, 0))
-    screen.blit(title, (SCREEN_SIZE//2 - title.get_width()//2, MARGIN * 2))
-    
-    subtitle = font.render("Pilih Mode Permainan", True, (50, 50, 50))
-    screen.blit(subtitle, (SCREEN_SIZE//2 - subtitle.get_width()//2, MARGIN * 4))
+
+    title = title_font.render("GOMOKU 15x15", True, (120, 20, 20))
+    subtitle = font.render("Pilih Mode Permainan", True, (60, 60, 60))
+
+    title_rect = title.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2 - 180))
+    subtitle_rect = subtitle.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2 - 130))
+
+    screen.blit(title, title_rect)
+    screen.blit(subtitle, subtitle_rect)
+
 
 def draw_agent_selection_menu(title_text):
     screen.fill(BG_COLOR)
@@ -220,9 +257,9 @@ def main():
     
     # Agent selections
     player_x_agent = None  # "human", "minimax", "mcts"
-    player_x_level = 1
+    player_x_level = None
     player_o_agent = None
-    player_o_level = 1
+    player_o_level = None
     
     # Game variables
     board = None
@@ -231,12 +268,8 @@ def main():
     winner = None
     
     # UI Elements
-    menu_buttons = [
-        Button(SCREEN_SIZE//2 - 150, SCREEN_SIZE//2 - 60, 300, 50, "User vs Agent", "user_vs_agent"),
-        Button(SCREEN_SIZE//2 - 150, SCREEN_SIZE//2 + 10, 300, 50, "Agent vs Agent", "agent_vs_agent"),
-        Button(SCREEN_SIZE//2 - 150, SCREEN_SIZE//2 + 80, 300, 50, "Keluar", "exit")
-    ]
-    
+    menu_buttons = create_menu_buttons()
+
     agent_btn_w = 130
     agent_btn_h = 45
     agent_gap = 20
@@ -298,6 +331,7 @@ def main():
                 for btn in agent_buttons:
                     if btn.handle_event(event):
                         player_x_agent = btn.value
+                        player_x_level = None
                         for b in agent_buttons:
                             b.selected = (b.value == player_x_agent)
                 
@@ -321,6 +355,7 @@ def main():
                 for btn in agent_buttons:
                     if btn.handle_event(event):
                         player_o_agent = btn.value
+                        player_o_level = None
                         for b in agent_buttons:
                             b.selected = (b.value == player_o_agent)
                 
@@ -330,7 +365,7 @@ def main():
                         for b in level_buttons:
                             b.selected = (b.value == player_o_level)
                 
-                if confirm_button.handle_event(event) and player_o_agent:
+                if confirm_button.handle_event(event) and player_o_agent and player_o_level is not None:
                     # Start game
                     board = create_board()
                     current_player = PLAYER_X
@@ -388,12 +423,17 @@ def main():
                 btn.draw(screen)
             
             if player_x_agent:
+                label2_y = LABEL_LEVEL_Y
                 label2 = font.render("Pilih Level:", True, (0, 0, 0))
-                screen.blit(label2, (SCREEN_SIZE//2 - label2.get_width()//2, SCREEN_SIZE//2 - 30))
-                for btn in level_buttons:
+                screen.blit(
+                    label2,
+                    (SCREEN_SIZE // 2 - label2.get_width() // 2, label2_y)
+                )
+                for i, btn in enumerate(level_buttons):
+                    btn.rect.y = label2_y + 35
                     btn.draw(screen)
+                
                 confirm_button.draw(screen)
-            
             back_button.draw(screen)
         
         elif game_state == STATE_SELECT_OPPONENT:
@@ -408,9 +448,12 @@ def main():
             
             if player_o_agent:
                 label2 = font.render("Pilih Level:", True, (0, 0, 0))
-                screen.blit(label2, (SCREEN_SIZE//2 - label2.get_width()//2, SCREEN_SIZE//2 - 30))
+                screen.blit(label2, (SCREEN_SIZE//2 - label2.get_width()//2, LABEL_LEVEL_Y))
+
                 for btn in level_buttons:
+                    btn.rect.y = LABEL_LEVEL_Y + LEVEL_BUTTON_OFFSET_Y
                     btn.draw(screen)
+                confirm_button.rect.y = CONFIRM_BUTTON_Y
                 confirm_button.draw(screen)
             
             back_button.draw(screen)
