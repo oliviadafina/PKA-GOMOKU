@@ -209,6 +209,11 @@ def draw_agent_selection_menu(title_text):
     title = title_font.render(title_text, True, (100, 0, 0))
     screen.blit(title, (SCREEN_SIZE//2 - title.get_width()//2, MARGIN * 2))
 
+def center_buttons_x(num_buttons, button_width, gap):
+    total_width = num_buttons * button_width + (num_buttons - 1) * gap
+    start_x = SCREEN_SIZE // 2 - total_width // 2
+    return start_x
+
 def main():
     game_state = STATE_MENU
     mode = None  # "user_vs_agent" or "agent_vs_agent"
@@ -232,15 +237,29 @@ def main():
         Button(SCREEN_SIZE//2 - 150, SCREEN_SIZE//2 + 80, 300, 50, "Keluar", "exit")
     ]
     
+    agent_btn_w = 130
+    agent_btn_h = 45
+    agent_gap = 20
+
+    agent_start_x = center_buttons_x(2, agent_btn_w, agent_gap)
+    agent_y = SCREEN_SIZE // 2 - 80
+
     agent_buttons = [
-        Button(SCREEN_SIZE//2 - 200, SCREEN_SIZE//2 - 80, 130, 45, "Minimax", "minimax"),
-        Button(SCREEN_SIZE//2 - 50, SCREEN_SIZE//2 - 80, 130, 45, "MCTS", "mcts"),
+        Button(agent_start_x, agent_y, agent_btn_w, agent_btn_h, "Minimax", "minimax"),
+        Button(agent_start_x + agent_btn_w + agent_gap, agent_y, agent_btn_w, agent_btn_h, "MCTS", "mcts"),
     ]
     
+    level_btn_w = 80
+    level_btn_h = 40
+    level_gap = 20
+
+    level_start_x = center_buttons_x(3, level_btn_w, level_gap)
+    level_y = SCREEN_SIZE // 2 + 10
+
     level_buttons = [
-        Button(SCREEN_SIZE//2 - 200, SCREEN_SIZE//2 + 10, 80, 40, "Level 1", 1),
-        Button(SCREEN_SIZE//2 - 100, SCREEN_SIZE//2 + 10, 80, 40, "Level 2", 2),
-        Button(SCREEN_SIZE//2, SCREEN_SIZE//2 + 10, 80, 40, "Level 3", 3),
+        Button(level_start_x, level_y, level_btn_w, level_btn_h, "Level 1", 1),
+        Button(level_start_x + (level_btn_w + level_gap), level_y, level_btn_w, level_btn_h, "Level 2", 2),
+        Button(level_start_x + 2 * (level_btn_w + level_gap), level_y, level_btn_w, level_btn_h, "Level 3", 3),
     ]
     
     confirm_button = Button(SCREEN_SIZE//2 - 75, SCREEN_SIZE//2 + 100, 150, 45, "Mulai", "confirm")
