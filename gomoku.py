@@ -4,8 +4,11 @@ import sys
 import json
 import os
 import time
+import subprocess
+from datetime import datetime
 from agents.minimax_optimized_agent import get_move_minimax_level
 from agents.mcts_optimized_agent import get_move_mcts
+from gomoku_simulasi import play_single_game, save_simulation_result, describe_agent as sim_describe_agent
 
 # ==============================
 # INIT
@@ -47,6 +50,8 @@ STATE_SELECT_AGENTS = "select_agents"
 STATE_SELECT_OPPONENT = "select_opponent"
 STATE_GAME = "game"
 STATE_END = "end"
+STATE_SETUP_SIMULATION = "setup_simulation"
+STATE_RUNNING_SIMULATION = "running_simulation"
 
 # ==============================
 # SCREEN
@@ -77,7 +82,7 @@ def create_menu_buttons():
     button_h = 55
     gap = 20
 
-    total_height = 3 * button_h + 2 * gap
+    total_height = 5 * button_h + 4 * gap
     start_y = SCREEN_SIZE // 2 - total_height // 2 + 40
 
     center_x = SCREEN_SIZE // 2 - button_w // 2
@@ -85,7 +90,9 @@ def create_menu_buttons():
     return [
         Button(center_x, start_y, button_w, button_h, "User vs Agent", "user_vs_agent"),
         Button(center_x, start_y + (button_h + gap), button_w, button_h, "Agent vs Agent", "agent_vs_agent"),
-        Button(center_x, start_y + 2 * (button_h + gap), button_w, button_h, "Keluar", "exit"),
+        Button(center_x, start_y + 2 * (button_h + gap), button_w, button_h, "Simulasi", "simulation"),
+        Button(center_x, start_y + 3 * (button_h + gap), button_w, button_h, "Lihat Statistik", "stats_viewer"),
+        Button(center_x, start_y + 4 * (button_h + gap), button_w, button_h, "Keluar", "exit"),
     ]
 
 class Button:
@@ -112,6 +119,54 @@ class Button:
             if self.rect.collidepoint(event.pos):
                 return True
         return False
+
+class InputField:
+    def __init__(self, x, y, width, height):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.text = "10"
+        self.active = False
+        self.cursor_visible = True
+        self.cursor_timer = 0
+    
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            self.active = self.rect.collidepoint(event.pos)
+        elif event.type == pygame.KEYDOWN and self.active:
+            if event.key == pygame.K_RETURN:
+                self.active = False
+            elif event.key == pygame.K_BACKSPACE:
+                self.text = self.text[:-1]
+            elif event.unicode.isdigit() and len(self.text) < 4:
+                self.text += event.unicode
+    
+    def draw(self, surface):
+        # Background
+        color = (255, 255, 255) if self.active else (240, 240, 240)
+        pygame.draw.rect(surface, color, self.rect)
+        border_color = (52, 152, 219) if self.active else (100, 100, 100)
+        pygame.draw.rect(surface, border_color, self.rect, 2)
+        
+        # Text
+        text_surface = font.render(self.text, True, (0, 0, 0))
+        text_x = self.rect.x + 10
+        text_y = self.rect.y + (self.rect.height - text_surface.get_height()) // 2
+        surface.blit(text_surface, (text_x, text_y))
+        
+        # Cursor
+        if self.active:
+            self.cursor_timer += 1
+            if self.cursor_timer % 60 < 30:  # Blink every 30 frames
+                cursor_x = text_x + text_surface.get_width() + 2
+                cursor_y = self.rect.y + 5
+                pygame.draw.line(surface, (0, 0, 0), 
+                               (cursor_x, cursor_y), 
+                               (cursor_x, cursor_y + self.rect.height - 10), 2)
+    
+    def get_value(self):
+        try:
+            return int(self.text) if self.text else 10
+        except:
+            return 10
 
 # ==============================
 # BOARD
@@ -229,14 +284,73 @@ def get_move_for_agent(board, agent_type, level):
         return get_move_mcts(board, level=level_key)
     return get_move_minimax_level(board, level=level)
 
+def launch_stats_viewer(file_path=None):
+    """Launch the statistics viewer in a new process"""
+    try:
+        stats_viewer_path = os.path.join(os.path.dirname(__file__), "stats_viewer.py")
+        if os.path.exists(stats_viewer_path):
+            if file_path:
+                subprocess.Popen([sys.executable, stats_viewer_path, file_path])
+            else:
+                subprocess.Popen([sys.executable, stats_viewer_path])
+        else:
+            print(f"Stats viewer not found at: {stats_viewer_path}")
+    except Exception as e:
+        print(f"Error launching stats viewer: {e}")
+
+def run_simulation_gui(agent_x_type, agent_x_level, agent_o_type, agent_o_level, num_games, 
+                       callback_progress=None):
+    """Run simulation using gomoku_simulasi functions with GUI callback"""
+    conf_x = {"agent": agent_x_type, "level": agent_x_level}
+    conf_o = {"agent": agent_o_type, "level": agent_o_level}
+    
+    x_wins, o_wins, draws = 0, 0, 0
+    total_time = 0
+    game_details = []
+    
+    for i in range(num_games):
+        start_time = time.time()
+        result = play_single_game(conf_x=conf_x, conf_o=conf_o, verbose=False)
+        game_time = time.time() - start_time
+        total_time += game_time
+        
+        winner_label = None
+        if result == 1:  # PLAYER_X
+            x_wins += 1
+            winner_label = 'X'
+        elif result == 2:  # PLAYER_O
+            o_wins += 1
+            winner_label = 'O'
+        else:
+            draws += 1
+            winner_label = 'Draw'
+        
+        game_details.append({
+            'number': i + 1,
+            'winner': winner_label,
+            'duration': game_time
+        })
+        
+        # Call progress callback if provided
+        if callback_progress:
+            callback_progress(i + 1, num_games, x_wins, o_wins, draws, total_time)
+    
+    # Save results using gomoku_simulasi function
+    filename = save_simulation_result(
+        conf_x, conf_o, num_games, False,
+        game_details, x_wins, o_wins, draws, total_time
+    )
+    
+    return filename
+
 def draw_menu():
     screen.fill(BG_COLOR)
 
-    title = title_font.render("GOMOKU 15x15", True, (120, 20, 20))
+    title = title_font.render("GOMOKU 15x15", True, (120, 49, 20))
     subtitle = font.render("Pilih Mode Permainan", True, (60, 60, 60))
 
-    title_rect = title.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2 - 180))
-    subtitle_rect = subtitle.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2 - 130))
+    title_rect = title.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2 - 250))
+    subtitle_rect = subtitle.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2 - 180))
 
     screen.blit(title, title_rect)
     screen.blit(subtitle, subtitle_rect)
@@ -246,6 +360,71 @@ def draw_agent_selection_menu(title_text):
     screen.fill(BG_COLOR)
     title = title_font.render(title_text, True, (100, 0, 0))
     screen.blit(title, (SCREEN_SIZE//2 - title.get_width()//2, MARGIN * 2))
+
+def draw_simulation_setup():
+    screen.fill(BG_COLOR)
+    title = title_font.render("Setup Simulasi", True, (100, 0, 0))
+    screen.blit(title, (SCREEN_SIZE//2 - title.get_width()//2, MARGIN * 2))
+
+def draw_simulation_running(current_game, total_games, player_x_name, player_o_name, 
+                            x_wins, o_wins, draws, elapsed_time):
+    screen.fill(BG_COLOR)
+    
+    y = 100
+    line_spacing = 35
+    
+    # Title
+    title = title_font.render("SIMULASI BERJALAN...", True, (120, 20, 20))
+    screen.blit(title, (SCREEN_SIZE//2 - title.get_width()//2, y))
+    y += 80
+    
+    # Match info
+    match_text = font.render(f"{player_x_name} vs {player_o_name}", True, (0, 0, 0))
+    screen.blit(match_text, (SCREEN_SIZE//2 - match_text.get_width()//2, y))
+    y += line_spacing + 20
+    
+    # Progress
+    progress_text = font.render(f"Game {current_game} / {total_games}", True, (0, 0, 0))
+    screen.blit(progress_text, (SCREEN_SIZE//2 - progress_text.get_width()//2, y))
+    y += line_spacing
+    
+    # Progress bar
+    bar_width = 400
+    bar_height = 30
+    bar_x = SCREEN_SIZE//2 - bar_width//2
+    bar_y = y
+    
+    pygame.draw.rect(screen, (200, 200, 200), (bar_x, bar_y, bar_width, bar_height))
+    if total_games > 0:
+        progress = current_game / total_games
+        fill_width = int(bar_width * progress)
+        pygame.draw.rect(screen, (52, 152, 219), (bar_x, bar_y, fill_width, bar_height))
+    pygame.draw.rect(screen, (0, 0, 0), (bar_x, bar_y, bar_width, bar_height), 2)
+    
+    y += bar_height + 30
+    
+    # Current results
+    results_title = font.render("Hasil Sementara:", True, (0, 0, 0))
+    screen.blit(results_title, (SCREEN_SIZE//2 - results_title.get_width()//2, y))
+    y += line_spacing + 10
+    
+    x_text = font.render(f"Player X: {x_wins} menang", True, (0, 0, 0))
+    screen.blit(x_text, (SCREEN_SIZE//2 - 150, y))
+    y += line_spacing
+    
+    o_text = font.render(f"Player O: {o_wins} menang", True, (0, 0, 0))
+    screen.blit(o_text, (SCREEN_SIZE//2 - 150, y))
+    y += line_spacing
+    
+    draw_text = font.render(f"Draw: {draws} seri", True, (0, 0, 0))
+    screen.blit(draw_text, (SCREEN_SIZE//2 - 150, y))
+    y += line_spacing + 20
+    
+    # Time
+    time_text = font.render(f"Waktu: {elapsed_time:.1f}s", True, (0, 0, 0))
+    screen.blit(time_text, (SCREEN_SIZE//2 - time_text.get_width()//2, y))
+    
+    pygame.display.flip()
 
 def center_buttons_x(num_buttons, button_width, gap):
     total_width = num_buttons * button_width + (num_buttons - 1) * gap
@@ -268,6 +447,14 @@ def main():
     game_over = False
     winner = None
     
+    # Simulation variables
+    sim_num_games = 10
+    sim_current_game = 0
+    sim_results = []
+    sim_durations = []
+    sim_start_time = 0
+    sim_output_file = ""
+    
     # UI Elements
     menu_buttons = create_menu_buttons()
 
@@ -283,7 +470,7 @@ def main():
         Button(agent_start_x + agent_btn_w + agent_gap, agent_y, agent_btn_w, agent_btn_h, "MCTS", "mcts"),
     ]
     
-    level_btn_w = 80
+    level_btn_w = 100
     level_btn_h = 40
     level_gap = 20
 
@@ -298,6 +485,9 @@ def main():
     
     confirm_button = Button(SCREEN_SIZE//2 - 75, SCREEN_SIZE//2 + 100, 150, 45, "Mulai", "confirm")
     back_button = Button(MARGIN, SCREEN_SIZE + 50, 100, 40, "Kembali", "back")
+    
+    # Simulation input field
+    num_games_input = InputField(SCREEN_SIZE//2 - 75, SCREEN_SIZE//2 + 80, 150, 40)
     
     clock = pygame.time.Clock()
     running = True
@@ -318,6 +508,14 @@ def main():
                     if btn.handle_event(event):
                         if btn.value == "exit":
                             running = False
+                        elif btn.value == "stats_viewer":
+                            launch_stats_viewer()
+                        elif btn.value == "simulation":
+                            game_state = STATE_SETUP_SIMULATION
+                            player_x_agent = None
+                            player_x_level = None
+                            player_o_agent = None
+                            player_o_level = None
                         elif btn.value in ["user_vs_agent", "agent_vs_agent"]:
                             mode = btn.value
                             if mode == "user_vs_agent":
@@ -382,6 +580,76 @@ def main():
                         game_state = STATE_SELECT_AGENTS
                     player_o_agent = None
             
+            # === SETUP SIMULATION STATE ===
+            elif game_state == STATE_SETUP_SIMULATION:
+                num_games_input.handle_event(event)
+                
+                # Select Player X agent
+                for btn in agent_buttons:
+                    if btn.handle_event(event):
+                        player_x_agent = btn.value
+                        player_x_level = None
+                        for b in agent_buttons:
+                            b.selected = (b.value == player_x_agent)
+                
+                # Select Player X level
+                for btn in level_buttons:
+                    if btn.handle_event(event):
+                        player_x_level = btn.value
+                        for b in level_buttons:
+                            b.selected = (b.value == player_x_level)
+                
+                # Continue to Player O selection if X is complete
+                if confirm_button.handle_event(event) and player_x_agent and player_x_level is not None:
+                    # Move to select Player O
+                    for b in agent_buttons:
+                        b.selected = False
+                    for b in level_buttons:
+                        b.selected = False
+                    player_o_agent = None
+                    player_o_level = None
+                    game_state = "setup_simulation_player_o"
+                
+                if back_button.handle_event(event):
+                    game_state = STATE_MENU
+                    player_x_agent = None
+                    player_x_level = None
+            
+            # === SETUP SIMULATION PLAYER O ===
+            elif game_state == "setup_simulation_player_o":
+                num_games_input.handle_event(event)
+                
+                for btn in agent_buttons:
+                    if btn.handle_event(event):
+                        player_o_agent = btn.value
+                        player_o_level = None
+                        for b in agent_buttons:
+                            b.selected = (b.value == player_o_agent)
+                
+                for btn in level_buttons:
+                    if btn.handle_event(event):
+                        player_o_level = btn.value
+                        for b in level_buttons:
+                            b.selected = (b.value == player_o_level)
+                
+                if confirm_button.handle_event(event) and player_o_agent and player_o_level is not None:
+                    # Start simulation
+                    sim_num_games = num_games_input.get_value()
+                    sim_current_game = 0
+                    sim_results = []
+                    sim_durations = []
+                    sim_start_time = time.time()
+                    game_state = STATE_RUNNING_SIMULATION
+                
+                if back_button.handle_event(event):
+                    game_state = STATE_SETUP_SIMULATION
+                    player_o_agent = None
+                    player_o_level = None
+                    for b in agent_buttons:
+                        b.selected = (b.value == player_x_agent)
+                    for b in level_buttons:
+                        b.selected = (b.value == player_x_level)
+            
             # === GAME STATE ===
             elif game_state == STATE_GAME:
                 if back_button.handle_event(event):
@@ -419,7 +687,7 @@ def main():
             draw_agent_selection_menu("Pilih Agent untuk Player X")
             
             label = font.render("Pilih Agent:", True, (0, 0, 0))
-            screen.blit(label, (SCREEN_SIZE//2 - label.get_width()//2, SCREEN_SIZE//2 - 120))
+            screen.blit(label, (SCREEN_SIZE//2 - label.get_width()//2, SCREEN_SIZE//2 - 180))
             
             for btn in agent_buttons:
                 btn.draw(screen)
@@ -443,7 +711,7 @@ def main():
             draw_agent_selection_menu(title_text)
             
             label = font.render("Pilih Agent:", True, (0, 0, 0))
-            screen.blit(label, (SCREEN_SIZE//2 - label.get_width()//2, SCREEN_SIZE//2 - 120))
+            screen.blit(label, (SCREEN_SIZE//2 - label.get_width()//2, SCREEN_SIZE//2 - 180))
             
             for btn in agent_buttons:
                 btn.draw(screen)
@@ -459,6 +727,115 @@ def main():
                 confirm_button.draw(screen)
             
             back_button.draw(screen)
+        
+        elif game_state == STATE_SETUP_SIMULATION:
+            draw_simulation_setup()
+            
+            label = font.render("Pilih Agent Player X:", True, (0, 0, 0))
+            screen.blit(label, (SCREEN_SIZE//2 - label.get_width()//2, SCREEN_SIZE//2 - 180))
+            
+            for btn in agent_buttons:
+                btn.rect.y = SCREEN_SIZE // 2 - 120
+                btn.draw(screen)
+            
+            if player_x_agent:
+                label2 = font.render("Pilih Level Player X:", True, (0, 0, 0))
+                screen.blit(label2, (SCREEN_SIZE//2 - label2.get_width()//2, SCREEN_SIZE//2 - 30))
+                
+                for btn in level_buttons:
+                    btn.rect.y = SCREEN_SIZE // 2 + 10
+                    btn.draw(screen)
+                
+                # Input jumlah game
+                label3 = font.render("Jumlah Game:", True, (0, 0, 0))
+                screen.blit(label3, (SCREEN_SIZE//2 - label3.get_width()//2, SCREEN_SIZE//2 + 60))
+                num_games_input.draw(screen)
+                
+                confirm_button.rect.y = SCREEN_SIZE//2 + 140
+                confirm_button.text = "Lanjut"
+                confirm_button.draw(screen)
+            
+            back_button.draw(screen)
+        
+        elif game_state == "setup_simulation_player_o":
+            draw_simulation_setup()
+            
+            label = font.render("Pilih Agent Player O:", True, (0, 0, 0))
+            screen.blit(label, (SCREEN_SIZE//2 - label.get_width()//2, SCREEN_SIZE//2 - 180))
+            
+            for btn in agent_buttons:
+                btn.rect.y = SCREEN_SIZE // 2 - 120
+                btn.draw(screen)
+            
+            if player_o_agent:
+                label2 = font.render("Pilih Level Player O:", True, (0, 0, 0))
+                screen.blit(label2, (SCREEN_SIZE//2 - label2.get_width()//2, SCREEN_SIZE//2 - 30))
+                
+                for btn in level_buttons:
+                    btn.rect.y = SCREEN_SIZE // 2 + 10
+                    btn.draw(screen)
+                
+                # Show configuration summary
+                label3 = font.render(f"Jumlah Game: {num_games_input.get_value()}", True, (0, 0, 0))
+                screen.blit(label3, (SCREEN_SIZE//2 - label3.get_width()//2, SCREEN_SIZE//2 + 80))
+                
+                label4 = font.render(f"Player X: {describe_agent(player_x_agent, player_x_level)}", True, (0, 0, 0))
+                screen.blit(label4, (SCREEN_SIZE//2 - label4.get_width()//2, SCREEN_SIZE//2 + 110))
+                
+                confirm_button.rect.y = SCREEN_SIZE//2 + 150
+                confirm_button.text = "Mulai"
+                confirm_button.draw(screen)
+            
+            back_button.draw(screen)
+        
+        elif game_state == STATE_RUNNING_SIMULATION:
+            # Initialize simulation if just started
+            if sim_current_game == 0 and not sim_results:
+                sim_start_time = time.time()
+            
+            # Run one game at a time
+            if sim_current_game < sim_num_games:
+                # Define progress callback
+                def update_progress(current, total, x_w, o_w, d, elapsed):
+                    player_x_name = describe_agent(player_x_agent, player_x_level)
+                    player_o_name = describe_agent(player_o_agent, player_o_level)
+                    draw_simulation_running(current, total, player_x_name, player_o_name,
+                                          x_w, o_w, d, elapsed)
+                
+                # Run the entire simulation
+                sim_output_file = run_simulation_gui(
+                    player_x_agent, player_x_level,
+                    player_o_agent, player_o_level,
+                    sim_num_games,
+                    callback_progress=update_progress
+                )
+                
+                # Mark as complete
+                sim_current_game = sim_num_games
+                
+                # Show completion message
+                screen.fill(BG_COLOR)
+                complete_text = title_font.render("SIMULASI SELESAI!", True, (0, 150, 0))
+                screen.blit(complete_text, (SCREEN_SIZE//2 - complete_text.get_width()//2, SCREEN_SIZE//2 - 50))
+                
+                info_text = font.render(f"Hasil disimpan: {os.path.basename(sim_output_file)}", True, (0, 0, 0))
+                screen.blit(info_text, (SCREEN_SIZE//2 - info_text.get_width()//2, SCREEN_SIZE//2 + 20))
+                
+                wait_text = font.render("Membuka visualisasi statistik...", True, (0, 0, 0))
+                screen.blit(wait_text, (SCREEN_SIZE//2 - wait_text.get_width()//2, SCREEN_SIZE//2 + 60))
+                
+                pygame.display.flip()
+                pygame.time.wait(2000)
+                
+                # Launch stats viewer with the result file
+                launch_stats_viewer(sim_output_file)
+                pygame.time.wait(1000)
+                
+                # Return to menu
+                game_state = STATE_MENU
+                sim_current_game = 0
+                sim_results = []
+                sim_durations = []
         
         elif game_state == STATE_GAME:
             label_x = (
@@ -511,7 +888,9 @@ def main():
                 pygame.time.wait(2000)
                 game_state = STATE_MENU
         
-        pygame.display.flip()
+        # Only flip if not in running simulation (it has its own flip)
+        if game_state != STATE_RUNNING_SIMULATION:
+            pygame.display.flip()
 
 if __name__ == "__main__":
     main()

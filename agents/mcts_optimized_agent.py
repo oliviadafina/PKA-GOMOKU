@@ -8,15 +8,6 @@ EMPTY = 0
 PLAYER_X = 1
 PLAYER_O = 2
 
-
-# Kode ini mengimplementasikan agen kecerdasan buatan untuk permainan Gomoku menggunakan Monte Carlo Tree Search (MCTS).
-
-# 🔹 Game Playing AI
-# Permainan papan seperti Gomoku adalah lingkungan kompetitif dua agen, sehingga termasuk:
-# Adversarial Search
-# Zero-sum game
-
-
 # ==============================
 # LOAD CONFIG
 # ==============================
@@ -190,10 +181,6 @@ def mcts_search(board, config, root_player):
             node = node.parent
 
     best_child = max(root.children, key=lambda c: c.visits)
-    # print(
-    #     f"[MCTS] Level: {config} | Move: {best_child.move} | "
-    #     f"Time: {time.time()-start_time:.2f}s"
-    # )
 
     return best_child.move
 

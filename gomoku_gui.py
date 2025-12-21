@@ -179,7 +179,6 @@ def get_move_for_agent(board, conf):
 def main():
     conf_x = GUI_CONFIG["player_x"]
     conf_o = GUI_CONFIG["player_o"]
-    verbose = GUI_CONFIG.get("simulation", {}).get("verbose", False)
 
     label_x = f"{describe_agent(conf_x)} (X)"
     label_o = f"{describe_agent(conf_o)} (O)"
@@ -190,7 +189,6 @@ def main():
     game_over = False
     winner = None
     clock = pygame.time.Clock()
-    move_count = 0
 
     while not game_over:
         clock.tick(60)
@@ -202,15 +200,7 @@ def main():
                 sys.exit()
 
         if current_player == PLAYER_X:
-            import time
-            start = time.time()
             move = get_move_for_agent(board, conf_x)
-            elapsed = time.time() - start
-            
-            if verbose:
-                move_count += 1
-                print(f"Move {move_count}: [{describe_agent(conf_x)}] pilih {move} dalam {elapsed:.2f}s")
-            
             if not apply_move(board, move, PLAYER_X):
                 winner = PLAYER_O
                 break
@@ -225,15 +215,8 @@ def main():
                 current_player = PLAYER_O
 
         else:
-            import time
-            start = time.time()
             move = get_move_for_agent(board, conf_o)
-            elapsed = time.time() - start
-            
-            if verbose:
-                move_count += 1
-                print(f"Move {move_count}: [{describe_agent(conf_o)}] pilih {move} dalam {elapsed:.2f}s")
-            
+
             if not apply_move(board, move, PLAYER_O):
                 winner = PLAYER_X
                 break
